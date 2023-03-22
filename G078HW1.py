@@ -4,25 +4,23 @@ import sys
 import os
 import random
 
-#hash function (to be completed)
+#hash function (to be checked)
 #input: 
-#		edges - set of edges
+#		edge - a single edge
+#		p,a,b - computation parameters
 #		C - number of subsets of edges
 #output:
-#		newEdges - new set of edges
-def hash(edges, C=1):
-	newEdges = set()
-	p = 8191
-	a = random.randint(1, p-1)
-	b = random.randint(0, p-1)
+#		col - color of the edge
+def hash(edge, p, a, b, C=1):
+	h1 = ((a * edge[0] + b) % p) % C
+	h2 = ((a * edge[1] + b) % p) % C
 
-	for e in edges:
-		h1 = ((a * e[0] + b) % p) % C
-		h2 = ((a * e[1] + b) % p) % C
-		newEdges.add((h1, h2))
+	#if endpoints have same color, then edge has single color h1 (or h2)
+	if h1 == h2:
+		return h1
+	return -1
 
-	return newEdges
-
+#Triangles counter in a group of edges
 def CountTriangles(edges):
     # Create a defaultdict to store the neighbors of each vertex
     neighbors = defaultdict(set)
@@ -53,24 +51,38 @@ def CountTriangles(edges):
 #		C - number of colors
 #output:
 #		t - estimate of the number of triangles
-def MR_ApproxTCwithNodeColors(edges, C):
-	edges = hash(edges, C)
+def MR_ApproxTCwithNodeColors(edges, C, sc):
+	p = 8191
+	a = random.randint(1, p-1)
+	b = random.randint(0, p-1)
 
-	#list of empty lists
-	E = []
-	for i in range(C):
-		E.append([])
+	triangles = [0] * C
+	for currentColor in range(C):
+		E = []	#local space O(max{E(0),...,E[C-1]})
+		for e in edges.collect():
+			i = hash(e, p, a, b, C)
+			if (i == currentColor):
+				E.append(e)
+		print("Length of subgroup ", currentColor, ":", len(E))
+		#TODO
+		#1. convert E into RDD
+		#	Note: probably not possible because of input of the func is specified by hw rules
+		rdd = sc.parallelize(E)
+		#2. compute triangles in E
+		triangles[currentColor] = (rdd.flatMap(lambda x: x) # <-- MAP PHASE (R1)
+				 .reduceByKey()) # <-- REDUCE PHASE (R1)
 
-	#edge added if endpoints have same color
-	for e in edges:
-		if e(0) == e(1):
-			E(e(0)).append(e)
+	#TODO
+	#sum up all elements in triangles
+	t = 0
+	for i in range(len(triangles)):
+		t = t + triangles[i]
 
 	#TODO
 	#problem: .flatmap requires an RDD, so we need to color edges inside the RDD
 	#	not creating another data structure
-	t = (edges.flatMap(CountTriangles) # <-- MAP PHASE (R1)
-				 .reduceByKey(lambda x, y: x + y)) # <-- REDUCE PHASE (R1)
+	#t = (edges.flatMap(CountTriangles) # <-- MAP PHASE (R1)
+	#			 .reduceByKey(lambda x, y: x + y)) # <-- REDUCE PHASE (R1)
 	return t
 
 def main():
@@ -97,11 +109,11 @@ def main():
 	data_path = sys.argv[3]
 	assert os.path.isfile(data_path), "File or folder not found"
 	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
-	edges = rawData.map(lambda x: (int(x.split(",")(0)), int(x.split(",")(1)))).cache()		#RDD of integers
+	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 
 	#trying to understand RDD usage
-	t = MR_ApproxTCwithNodeColors(edges, C)
-	print("Estimate of t: ")		
+	t = MR_ApproxTCwithNodeColors(edges, C, sc)
+	print("Estimate of t: ", t)		
 
 if __name__ == "__main__":
 	main()
