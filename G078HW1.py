@@ -56,6 +56,7 @@ def MR_ApproxTCwithNodeColors(edges, C, sc):
 	a = random.randint(1, p-1)
 	b = random.randint(0, p-1)
 
+	#ROUND 1
 	triangles = [0] * C
 	for currentColor in range(C):
 		E = []	#local space O(max{E(0),...,E[C-1]})
@@ -63,26 +64,28 @@ def MR_ApproxTCwithNodeColors(edges, C, sc):
 			i = hash(e, p, a, b, C)
 			if (i == currentColor):
 				E.append(e)
-		print("Length of subgroup ", currentColor, ":", len(E))
+		
+		print("Length of subgroup", currentColor, ":", len(E))
+		
 		#TODO
 		#1. convert E into RDD
-		#	Note: probably not possible because of input of the func is specified by hw rules
-		rdd = sc.parallelize(E)
-		#2. compute triangles in E
-		triangles[currentColor] = (rdd.flatMap(lambda x: x) # <-- MAP PHASE (R1)
-				 .reduceByKey()) # <-- REDUCE PHASE (R1)
+		#	Note: probably not possible because input of the func is specified by hw rules (so no 'sc' as explicit param)
+		#rdd = sc.parallelize(E)
 
-	#TODO
+		#2. compute triangles in E
+		triangles[currentColor] = CountTriangles(E)
+		
+		#IDK how to use flatMap and reduceByKey, and if it is necessary to use them
+		#triangles[currentColor] = CountTriangles(rdd.flatMap(lambda x: x) # <-- MAP PHASE (R1)
+		#		 .reduceByKey(lambda x: x)) # <-- REDUCE PHASE (R1)
+
+	#ROUND 2
 	#sum up all elements in triangles
 	t = 0
 	for i in range(len(triangles)):
 		t = t + triangles[i]
+	t = t*C^2
 
-	#TODO
-	#problem: .flatmap requires an RDD, so we need to color edges inside the RDD
-	#	not creating another data structure
-	#t = (edges.flatMap(CountTriangles) # <-- MAP PHASE (R1)
-	#			 .reduceByKey(lambda x, y: x + y)) # <-- REDUCE PHASE (R1)
 	return t
 
 def main():
@@ -113,7 +116,7 @@ def main():
 
 	#trying to understand RDD usage
 	t = MR_ApproxTCwithNodeColors(edges, C, sc)
-	print("Estimate of t: ", t)		
+	print("Estimate of t:", t)		
 
 if __name__ == "__main__":
 	main()
