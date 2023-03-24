@@ -4,28 +4,15 @@ import sys
 import os
 import random
 
-#hash function (to be checked)
-#input: 
-#		edge - a single edge
-#		p,a,b - computation parameters
-#		C - number of subsets of edges
-#output:
-#		col - color of the edge
-def hash(edge, p, a, b, C=1):
-	h1 = ((a * edge[0] + b) % p) % C
-	h2 = ((a * edge[1] + b) % p) % C
 
-	#if endpoints have same color, then edge has single color h1 (or h2)
-	if h1 == h2:
-		return h1
-	return -1
 
 #Triangles counter in a group of edges
 def CountTriangles(edges):
     # Create a defaultdict to store the neighbors of each vertex
     neighbors = defaultdict(set)
-    for edge in edges:
-        u, v = edge
+    for edge in edges.collect():
+        y, (u, v) = edge
+        #print("YUV:", y, u, v)
         neighbors[u].add(v)
         neighbors[v].add(u)
 
@@ -51,35 +38,73 @@ def CountTriangles(edges):
 #		C - number of colors
 #output:
 #		t - estimate of the number of triangles
-def MR_ApproxTCwithNodeColors(edges, C, sc):
+def MR_ApproxTCwithNodeColors(edges, C=1):
 	p = 8191
 	a = random.randint(1, p-1)
 	b = random.randint(0, p-1)
 
-	#ROUND 1
-	triangles = [0] * C
-	for currentColor in range(C):
-		E = []	#local space O(max{E(0),...,E[C-1]})
-		for e in edges.collect():
-			i = hash(e, p, a, b, C)
-			if (i == currentColor):
-				E.append(e)
-		
-		print("Length of subgroup", currentColor, ":", len(E))
-		
-		#TODO
-		#1. convert E into RDD
-		#	Note: probably not possible because input of the func is specified by hw rules (so no 'sc' as explicit param)
-		#rdd = sc.parallelize(E)
+	#input:
+	#		e - edge
+	#output:
+	#		-1 if edge non-monochromatic
+	#		h1 otherwise
+	def hash(e):
+		h1 = ((a * e[0] + b) % p) % C
+		h2 = ((a * e[1] + b) % p) % C
 
-		#2. compute triangles in E
-		triangles[currentColor] = CountTriangles(E)
+		if (h1 == h2):
+			return h1
+		return -1
+
+	#function to be used in map step
+	#input:
+	#		e - edge as (u,v)
+	#		i - current color analyzed
+	#output:
+	#		e - modified edge as (color, (u,v))
+	def f(e, i):
+		y = hash(e) 
+		#print(e, "-> HASH:", y)
 		
-		#IDK how to use flatMap and reduceByKey, and if it is necessary to use them
-		#triangles[currentColor] = CountTriangles(rdd.flatMap(lambda x: x) # <-- MAP PHASE (R1)
-		#		 .reduceByKey(lambda x: x)) # <-- REDUCE PHASE (R1)
+		if y == i:
+			e = (y, (e[0], e[1]))
+		else:
+			e = (-1, (e[0], e[1]))
+		return e
+
+	#ROUND 1
+	triangles = [0] * C		#list containing the number of triangles of partition i in position i
+	for i in range(C):
+		rdd = edges.map(lambda x: f(x, i)).filter(lambda x: x[0] == i)
+		
+		print("\tCOLOR", i, ":", rdd.count(), "ELEMENT(S)")
+		for elem in rdd.collect():
+			print("\t\t", elem)
+		
+		triangles[i] = CountTriangles(rdd)
 
 	#ROUND 2
+	#sum up all elements in triangles
+	t = C**2 * sum(triangles)
+
+	return t
+
+#
+#input:
+#		edges - RDD with edges
+#		C - number of partitions
+#output:
+#		t - estimate of the number of triangles
+def MR_ApproxTCwithSparkPartitions(edges, C=1):
+	#TODO
+	#1. Partitioning
+	edges = edges.repartition(C)
+
+	#2. C random partitions using mapPartitions
+	edges = (edges.mapPartitions(lambda x: x, preservesPartitioning=false)
+			.reduceByKey())
+
+
 	#sum up all elements in triangles
 	t = 0
 	for i in range(len(triangles)):
@@ -97,7 +122,6 @@ def main():
 	sc = SparkContext(conf=conf)
 
 	# INPUT READING
-
 	# 1. Read number of colors
 	C = sys.argv[1]
 	assert C.isdigit(), "C must be an integer"
@@ -114,9 +138,13 @@ def main():
 	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 
+	print("\nEDGES:", edges.count())	
+
 	#trying to understand RDD usage
-	t = MR_ApproxTCwithNodeColors(edges, C, sc)
-	print("Estimate of t:", t)		
+	print("\nMR_ApproxTCwithNodeColors:")
+	for i in range(R):
+		t = MR_ApproxTCwithNodeColors(edges, C)
+		print("\tRUN", i, "-> Estimate of t:", t)		
 
 if __name__ == "__main__":
 	main()
