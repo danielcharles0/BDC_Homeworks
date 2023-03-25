@@ -1,3 +1,4 @@
+import array
 from pyspark import SparkContext, SparkConf
 from collections import defaultdict
 import sys
@@ -32,7 +33,7 @@ def CountTriangles(edges):
     # Return the total number of triangles in the graph
     return triangle_count
 
-#
+#ALGORITHM 1'S IMPLEMENTATION
 #input:
 #		edges - RDD with the edges
 #		C - number of colors
@@ -51,6 +52,12 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 	def hash(e):
 		h1 = ((a * e[0] + b) % p) % C
 		h2 = ((a * e[1] + b) % p) % C
+		
+		#print("e0 "+str(e[0])+'\n')
+		#print("e1 "+str(e[1])+'\n')
+		#print("h1 "+str(h1)+'\n')
+		#print("h2 "+str(h2)+'\n')
+		#print("------\n")
 
 		if (h1 == h2):
 			return h1
@@ -73,7 +80,9 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 		return e
 
 	#ROUND 1
-	triangles = [0] * C		#list containing the number of triangles of partition i in position i
+	triangles = [0] * C		#array containing the number of triangles of partition i in position i
+	
+	#Foreach color
 	for i in range(C):
 		rdd = edges.map(lambda x: f(x, i)).filter(lambda x: x[0] == i)
 		
@@ -89,7 +98,7 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 
 	return t
 
-#
+#ALGORITHM 2'S IMPLEMENTATION
 #input:
 #		edges - RDD with edges
 #		C - number of partitions
@@ -124,22 +133,26 @@ def main():
 	# INPUT READING
 	# 1. Read number of colors
 	C = sys.argv[1]
-	assert C.isdigit(), "C must be an integer"
+	assert C.isdigit(), "C must be an integer - C is # of colours"
 	C = int(C)
 
-	# 2. Read number of rounds
+	# 2. Read number of runs (ONE RUN = Round1 + Round2)
 	R = sys.argv[2]
-	assert R.isdigit(), "R must be an integer"
+	assert R.isdigit(), "R must be an integer - R = is # of runs"
 	R = int(R)
 
-	# 3. Read input file
+	# 3. Read input file: in this case it'll be a .txt file
 	data_path = sys.argv[3]
 	assert os.path.isfile(data_path), "File or folder not found"
 	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 
+	print("\nList of all edges:\n")	
+	#Printing all edges (utility purpose)
+	for e in edges.collect() : print(e)
 	print("\nEDGES:", edges.count())	
 
+	#{REMEMBER TO STORE ALL RUNS' RESULTS TO CALCULATE MEDIAN}
 	#trying to understand RDD usage
 	print("\nMR_ApproxTCwithNodeColors:")
 	for i in range(R):
