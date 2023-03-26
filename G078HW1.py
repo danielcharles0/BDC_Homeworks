@@ -59,13 +59,13 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 
 	#ROUND 1	
 	rdd = (edges.map(hash).filter(lambda x: x[0] != -1)		#MAP PHASE
-		  .groupByKey()										#SHUFFLE PHASE	
-		  .mapValues(lambda x: CountTriangles(x)))			#REDUCE PHASE
+		.groupByKey()										#SHUFFLE PHASE	
+		.mapValues(lambda x: CountTriangles(x)))			#REDUCE PHASE
 
 	#ROUND 2
-	#Summing all elements in the triangles
+	#Summing number of triangles for each color
 	t = (rdd.map(lambda x: x[1])		#MAP PHASE
-	    .reduce(lambda x,y: x+y))		#REDUCE PHASE
+		.reduce(lambda x,y: x+y))		#REDUCE PHASE
 
 	#estimated number of triangles formed by the input edges
 	t_final = C**2 * t
@@ -79,7 +79,7 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 #		edges - RDD with edges
 #		C - number of partitions
 #output:
-#		t - estimate of the number of triangles
+#		t_final - estimate of the number of triangles
 def MR_ApproxTCwithSparkPartitions(edges, C=1):
 	#ROUND 1
 	#C random partitions using mapPartitions
@@ -87,9 +87,9 @@ def MR_ApproxTCwithSparkPartitions(edges, C=1):
 
 	#ROUND 2
 	#sum up all elements in triangles
-	t = C**2 #* sum(triangles)
+	t_final = C**2 #* sum(triangles)
 
-	return t
+	return t_final
 
 
 
@@ -104,12 +104,12 @@ def main():
 	# INPUT READING
 	# 1. Read number of colors
 	C = sys.argv[1]
-	assert C.isdigit(), "C must be an integer - C is # of colours"
+	assert C.isdigit(), "C must be an integer - C is the number of colours"
 	C = int(C)
 
 	# 2. Read number of runs (ONE RUN = Round1 + Round2)
 	R = sys.argv[2]
-	assert R.isdigit(), "R must be an integer - R = is # of runs"
+	assert R.isdigit(), "R must be an integer - R is the number of runs"
 	R = int(R)
 
 	# 3. Read input file: in this case it'll be a .txt file
@@ -133,11 +133,11 @@ def main():
 	#printing the median of R runs
 	runs_alg1.sort()
 	if(R%2==1):
-		median = runs_alg1[ int(R/2) ]
+		median_alg1 = runs_alg1[int(R/2)]
 	else:
-		median = (runs_alg1[ int(R/2) ] + runs_alg1[ int(R/2-1) ])/2
+		median_alg1 = (runs_alg1[R/2] + runs_alg1[R/2-1])/2
 
-	print("\n\nMEDIAN T_FINAL OF", R, "runs is: ", median)
+	print("\n\tMEDIAN:", median_alg1)
 
 
 
