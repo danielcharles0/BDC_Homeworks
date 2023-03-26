@@ -1,4 +1,5 @@
 import array
+from xml.dom.minidom import Identified
 from pyspark import SparkContext, SparkConf
 from collections import defaultdict
 import sys
@@ -33,7 +34,7 @@ def CountTriangles(edges):
 
 
 
-#ALGORITHM 1'S IMPLEMENTATION
+#ALGORITHM 1
 #input:
 #		edges - RDD with the edges
 #		C - number of colors
@@ -47,7 +48,7 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 	#input:
 	#		e - edge
 	#output:
-	#		edge with color as key, color = -1 if non-monochromatic edge
+	#		(color,edge): color = -1 if non monochromatical edge
 	def hash(e):
 		h1 = ((a * e[0] + b) % p) % C
 		h2 = ((a * e[1] + b) % p) % C
@@ -57,14 +58,17 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 		return (-1, (e[0], e[1]))
 
 	#ROUND 1	
-	rdd = edges.map(hash).filter(lambda x: x[0] != -1).groupByKey()		#MAP PHASE
-	rdd = rdd.mapValues(lambda x: CountTriangles(x))		#REDUCE PHASE
+	rdd = (edges.map(hash).filter(lambda x: x[0] != -1)		#MAP PHASE
+		  .groupByKey()										#SHUFFLE PHASE	
+		  .mapValues(lambda x: CountTriangles(x)))			#REDUCE PHASE
 
 	#ROUND 2
-	#sum up all elements in triangles
-	t = rdd.map(lambda x: x[1]).reduce(lambda x,y: x+y)
+	#Summing all elements in the triangles
+	t = (rdd.map(lambda x: x[1])		#MAP PHASE
+	    .reduce(lambda x,y: x+y))		#REDUCE PHASE
 	#t = rdd.values().sum()
 
+	#estimated number of triangles formed by the input edges
 	t_final = C**2 * t
 
 	return t_final
@@ -121,7 +125,16 @@ def main():
 	print("\nMR_ApproxTCwithNodeColors:")
 	for i in range(R):
 		runs_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
-		print("\tRUN", i, "-> Estimate of t:", runs_alg1[i])	
+		print("\tRUN", i, "-> Estimate of t:", runs_alg1[i])
+
+	#printing the median of R runs
+	runs_alg1 = runs_alg1.sort()
+	if(R%2==1):
+		print(str(runs_alg1[ (R/2) ]))
+	else:
+		print( str(((runs_alg1[R/2] + runs_alg1[R/2-1])/2)) )
+
+
 
 	#runs_alg2 = [0] * R 	#results stored to compute median
 	#print("\nMR_ApproxTCwithSparkPartitions:")
