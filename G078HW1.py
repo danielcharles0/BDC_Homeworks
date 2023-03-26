@@ -5,6 +5,7 @@ from collections import defaultdict
 import sys
 import os
 import random
+import time
 
 
 #Triangles counter in a group of edges
@@ -123,22 +124,24 @@ def main():
 
 	#ALGORITHM 1 RUNS
 	print("\nMR_ApproxTCwithNodeColors:")
-	runs_alg1 = [0] * R 	#results stored to compute median
+	results_alg1 = [0] * R 		#results stored to compute median
+	runningTime_alg1 = [0] * R 		#running time for run i
 	for i in range(R):
-		runs_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
-		print("\tRUN", i, "-> Estimate of t:", runs_alg1[i])
-
-	median = -1
+		start = time.time() * 1000		#starting time in milliseconds
+		results_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
+		stop = time.time() * 1000		#stopping time in milliseconds
+		runningTime_alg1[i] = stop - start
+		print("\tRUN", i, "-> Estimate of t:", results_alg1[i])
 
 	#printing the median of R runs
-	runs_alg1.sort()
+	results_alg1.sort()
 	if(R%2==1):
-		median_alg1 = runs_alg1[int(R/2)]
+		median_alg1 = results_alg1[int(R/2)]
 	else:
-		median_alg1 = (runs_alg1[R/2] + runs_alg1[R/2-1])/2
+		median_alg1 = (results_alg1[R/2] + results_alg1[R/2-1])/2
 
 	print("\n\tMEDIAN:", median_alg1)
-
+	print("\n\tMEAN RUNNING TIME (ms):", sum(runningTime_alg1)/R)
 
 
 	#runs_alg2 = [0] * R 	#results stored to compute median
