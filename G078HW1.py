@@ -6,14 +6,12 @@ import os
 import random
 
 
-
 #Triangles counter in a group of edges
 def CountTriangles(edges):
     # Create a defaultdict to store the neighbors of each vertex
     neighbors = defaultdict(set)
-    for edge in edges.collect():
-        y, (u, v) = edge
-        #print("YUV:", y, u, v)
+    for edge in edges:
+        u, v = edge
         neighbors[u].add(v)
         neighbors[v].add(u)
 
@@ -33,12 +31,14 @@ def CountTriangles(edges):
     # Return the total number of triangles in the graph
     return triangle_count
 
+
+
 #ALGORITHM 1'S IMPLEMENTATION
 #input:
 #		edges - RDD with the edges
 #		C - number of colors
 #output:
-#		t - estimate of the number of triangles
+#		t_final - estimate of the number of triangles
 def MR_ApproxTCwithNodeColors(edges, C=1):
 	p = 8191
 	a = random.randint(1, p-1)
@@ -47,56 +47,29 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 	#input:
 	#		e - edge
 	#output:
-	#		-1 if edge non-monochromatic
-	#		h1 otherwise
+	#		edge with color as key, color = -1 if non-monochromatic edge
 	def hash(e):
 		h1 = ((a * e[0] + b) % p) % C
 		h2 = ((a * e[1] + b) % p) % C
-		
-		#print("e0 "+str(e[0])+'\n')
-		#print("e1 "+str(e[1])+'\n')
-		#print("h1 "+str(h1)+'\n')
-		#print("h2 "+str(h2)+'\n')
-		#print("------\n")
 
 		if (h1 == h2):
-			return h1
-		return -1
+			return (h1, (e[0], e[1]))
+		return (-1, (e[0], e[1]))
 
-	#function to be used in map step
-	#input:
-	#		e - edge as (u,v)
-	#		i - current color analyzed
-	#output:
-	#		e - modified edge as (color, (u,v))
-	def f(e, i):
-		y = hash(e) 
-		#print(e, "-> HASH:", y)
-		
-		if y == i:
-			e = (y, (e[0], e[1]))
-		else:
-			e = (-1, (e[0], e[1]))
-		return e
-
-	#ROUND 1
-	triangles = [0] * C		#array containing the number of triangles of partition i in position i
-	
-	#Foreach color
-	for i in range(C):
-		rdd = edges.map(lambda x: f(x, i)).filter(lambda x: x[0] == i)
-		
-		print("\tCOLOR", i, ":", rdd.count(), "ELEMENT(S)")
-		for elem in rdd.collect():
-			print("\t\t", elem)
-		
-		triangles[i] = CountTriangles(rdd)
+	#ROUND 1	
+	rdd = edges.map(hash).filter(lambda x: x[0] != -1).groupByKey()		#MAP PHASE
+	rdd = rdd.mapValues(lambda x: CountTriangles(x))		#REDUCE PHASE
 
 	#ROUND 2
 	#sum up all elements in triangles
-	t = C**2 * sum(triangles)
+	t = rdd.map(lambda x: x[1]).reduce(lambda x,y: x+y)
+	#t = rdd.values().sum()
 
-	return t
+	t_final = C**2 * t
+
+	return t_final
+
+
 
 #ALGORITHM 2'S IMPLEMENTATION
 #input:
@@ -105,22 +78,17 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 #output:
 #		t - estimate of the number of triangles
 def MR_ApproxTCwithSparkPartitions(edges, C=1):
-	#TODO
-	#1. Partitioning
-	edges = edges.repartition(C)
+	#ROUND 1
+	#C random partitions using mapPartitions
+	rdd = edges.mapPartitions(partitioning, preservesPartitioning=False)
 
-	#2. C random partitions using mapPartitions
-	edges = (edges.mapPartitions(lambda x: x, preservesPartitioning=false)
-			.reduceByKey())
-
-
+	#ROUND 2
 	#sum up all elements in triangles
-	t = 0
-	for i in range(len(triangles)):
-		t = t + triangles[i]
-	t = t*C^2
+	t = C**2 #* sum(triangles)
 
 	return t
+
+
 
 def main():
 	# CHECKING NUMBER OF CMD LINE PARAMETERS
@@ -146,18 +114,23 @@ def main():
 	assert os.path.isfile(data_path), "File or folder not found"
 	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
-
-	print("\nList of all edges:\n")	
-	#Printing all edges (utility purpose)
-	for e in edges.collect() : print(e)
+	
 	print("\nEDGES:", edges.count())	
 
-	#{REMEMBER TO STORE ALL RUNS' RESULTS TO CALCULATE MEDIAN}
-	#trying to understand RDD usage
+	runs_alg1 = [0] * R 	#results stored to compute median
 	print("\nMR_ApproxTCwithNodeColors:")
 	for i in range(R):
-		t = MR_ApproxTCwithNodeColors(edges, C)
-		print("\tRUN", i, "-> Estimate of t:", t)		
+		runs_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
+		print("\tRUN", i, "-> Estimate of t:", runs_alg1[i])	
+
+	#runs_alg2 = [0] * R 	#results stored to compute median
+	#print("\nMR_ApproxTCwithSparkPartitions:")
+	#for i in range(R):
+	#	runs_alg2[i] = MR_ApproxTCwithSparkPartitions(edges, C)
+	#	print("\tRUN", i, "-> Estimate of t:", runs_alg2[i])	
+
+
+
 
 if __name__ == "__main__":
 	main()
