@@ -66,7 +66,6 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 	#Summing all elements in the triangles
 	t = (rdd.map(lambda x: x[1])		#MAP PHASE
 	    .reduce(lambda x,y: x+y))		#REDUCE PHASE
-	#t = rdd.values().sum()
 
 	#estimated number of triangles formed by the input edges
 	t_final = C**2 * t
@@ -128,11 +127,15 @@ def main():
 		print("\tRUN", i, "-> Estimate of t:", runs_alg1[i])
 
 	#printing the median of R runs
-	runs_alg1 = runs_alg1.sort()
+	runs_alg1.sort()
+	#for x in runs_alg1: print(x)
+	median = -1
 	if(R%2==1):
-		print(str(runs_alg1[ (R/2) ]))
+		median = runs_alg1[ int(R/2) ]
 	else:
-		print( str(((runs_alg1[R/2] + runs_alg1[R/2-1])/2)) )
+		median = (runs_alg1[ int(R/2) ] + runs_alg1[ int(R/2-1) ])/2
+
+	print("\n\nMEDIAN T_FINAL OF", R, "runs is: ", median)
 
 
 
