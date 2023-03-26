@@ -118,18 +118,20 @@ def main():
 	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 	
+	#printing # of edges
 	print("\nEDGES:", edges.count())	
 
-	runs_alg1 = [0] * R 	#results stored to compute median
+	#ALGORITHM 1 RUNS
 	print("\nMR_ApproxTCwithNodeColors:")
+	runs_alg1 = [0] * R 	#results stored to compute median
 	for i in range(R):
 		runs_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
 		print("\tRUN", i, "-> Estimate of t:", runs_alg1[i])
 
+	median = -1
+
 	#printing the median of R runs
 	runs_alg1.sort()
-	#for x in runs_alg1: print(x)
-	median = -1
 	if(R%2==1):
 		median = runs_alg1[ int(R/2) ]
 	else:
