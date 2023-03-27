@@ -84,11 +84,21 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 def MR_ApproxTCwithSparkPartitions(edges, C=1):
 	#ROUND 1
 	#C random partitions using mapPartitions
-	rdd = edges.mapPartitions(partitioning, preservesPartitioning=False)
+	rdd = (edges.repartition(C)							#MAP
+		.mapPartitions(lambda x: CountTriangles(x)))	#REDUCE	
 
 	#ROUND 2
 	#sum up all elements in triangles
-	t_final = C**2 #* sum(triangles)
+	t = rdd.reduce(lambda x,y: x+y)
+	
+	#t = 0
+	#for e in rdd.glom().collect():
+	#		partial = 0
+	#	for i in range(len(e)):
+	#		partial = partial + int(e[-i-1]) * 10**i
+	#	t = t + partial
+
+	t_final = C**2 * t
 
 	return t_final
 
@@ -133,7 +143,7 @@ def main():
 		runningTime_alg1[i] = stop - start
 		print("\tRUN", i, "-> Estimate of t:", results_alg1[i])
 
-	#printing the median of R runs
+	#Printing the median of R runs
 	results_alg1.sort()
 	if(R%2==1):
 		median_alg1 = results_alg1[int(R/2)]
@@ -144,11 +154,26 @@ def main():
 	print("\n\tMEAN RUNNING TIME (ms):", sum(runningTime_alg1)/R)
 
 
-	#runs_alg2 = [0] * R 	#results stored to compute median
-	#print("\nMR_ApproxTCwithSparkPartitions:")
-	#for i in range(R):
-	#	runs_alg2[i] = MR_ApproxTCwithSparkPartitions(edges, C)
-	#	print("\tRUN", i, "-> Estimate of t:", runs_alg2[i])	
+	#ALGORITHM 2 RUNS
+	print("\nMR_ApproxTCwithSparkPartitions:")
+	results_alg2 = [0] * R 		#results stored to compute median
+	runningTime_alg2 = [0] * R 		#running time for run i
+	for i in range(R):
+		start = time.time() * 1000		#starting time in milliseconds
+		results_alg2[i] = MR_ApproxTCwithSparkPartitions(edges, C)
+		stop = time.time() * 1000		#stopping time in milliseconds
+		runningTime_alg2[i] = stop - start
+		print("\tRUN", i, "-> Estimate of t:", results_alg2[i])
+
+	#Printing the median of R runs
+	results_alg2.sort()
+	if(R%2==1):
+		median_alg2 = results_alg2[int(R/2)]
+	else:
+		median_alg2 = (results_alg2[R/2] + results_alg2[R/2-1])/2
+
+	print("\n\tMEDIAN:", median_alg2)
+	print("\n\tMEAN RUNNING TIME (ms):", sum(runningTime_alg2)/R)
 
 
 
