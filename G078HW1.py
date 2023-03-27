@@ -68,14 +68,17 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 	t = (rdd.map(lambda x: x[1])		#MAP PHASE
 		.reduce(lambda x,y: x+y))		#REDUCE PHASE
 
-	#estimated number of triangles formed by the input edges
+	#Estimated number of triangles formed by the input edges
 	t_final = C**2 * t
 
 	return t_final
 
+def foo(x):
+	print("FUNC:", x, "TYPE:", type(x))
+	yield x
+	
 
-
-#ALGORITHM 2'S IMPLEMENTATION
+#ALGORITHM 2
 #input:
 #		edges - RDD with edges
 #		C - number of partitions
@@ -88,12 +91,13 @@ def MR_ApproxTCwithSparkPartitions(edges, C=1):
 		.mapPartitions(lambda x: CountTriangles(x)))	#REDUCE	
 
 	#ROUND 2
-	#sum up all elements in triangles
-	t = rdd.reduce(lambda x,y: x+y)
+	#Sum up all elements in triangles
+	t = (rdd.mapPartitions(lambda x: foo(x))			#MAP (to see values and types)
+		.reduce(lambda x,y: x+y))						#REDUCE
 	
 	#t = 0
 	#for e in rdd.glom().collect():
-	#		partial = 0
+	#	partial = 0
 	#	for i in range(len(e)):
 	#		partial = partial + int(e[-i-1]) * 10**i
 	#	t = t + partial
@@ -129,17 +133,17 @@ def main():
 	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 	
-	#printing # of edges
+	#Printing number of edges
 	print("\nEDGES:", edges.count())	
 
 	#ALGORITHM 1 RUNS
 	print("\nMR_ApproxTCwithNodeColors:")
-	results_alg1 = [0] * R 		#results stored to compute median
-	runningTime_alg1 = [0] * R 		#running time for run i
+	results_alg1 = [0] * R 		#Results stored to compute median
+	runningTime_alg1 = [0] * R 		#Running time for run i
 	for i in range(R):
-		start = time.time() * 1000		#starting time in milliseconds
+		start = time.time() * 1000		#Starting time in milliseconds
 		results_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
-		stop = time.time() * 1000		#stopping time in milliseconds
+		stop = time.time() * 1000		#Stopping time in milliseconds
 		runningTime_alg1[i] = stop - start
 		print("\tRUN", i, "-> Estimate of t:", results_alg1[i])
 
@@ -156,12 +160,12 @@ def main():
 
 	#ALGORITHM 2 RUNS
 	print("\nMR_ApproxTCwithSparkPartitions:")
-	results_alg2 = [0] * R 		#results stored to compute median
-	runningTime_alg2 = [0] * R 		#running time for run i
+	results_alg2 = [0] * R 		#Results stored to compute median
+	runningTime_alg2 = [0] * R 		#Running time for run i
 	for i in range(R):
-		start = time.time() * 1000		#starting time in milliseconds
+		start = time.time() * 1000		#Starting time in milliseconds
 		results_alg2[i] = MR_ApproxTCwithSparkPartitions(edges, C)
-		stop = time.time() * 1000		#stopping time in milliseconds
+		stop = time.time() * 1000		#Stopping time in milliseconds
 		runningTime_alg2[i] = stop - start
 		print("\tRUN", i, "-> Estimate of t:", results_alg2[i])
 
@@ -174,7 +178,6 @@ def main():
 
 	print("\n\tMEDIAN:", median_alg2)
 	print("\n\tMEAN RUNNING TIME (ms):", sum(runningTime_alg2)/R)
-
 
 
 
