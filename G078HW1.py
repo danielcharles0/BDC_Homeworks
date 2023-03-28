@@ -90,25 +90,21 @@ def foo(x):
 #ALGORITHM 2
 #input:
 #		edges - RDD with edges
-#		C - number of partitions
 #output:
 #		t_final - estimate of the number of triangles
-def MR_ApproxTCwithSparkPartitions(edges, C=1):
+def MR_ApproxTCwithSparkPartitions(edges):
 	#ROUND 1
 	#C random partitions using mapPartitions
-	rdd = (edges.repartition(C)							#MAP
-		.mapPartitions(lambda x: foo(x)))				#REDUCE	
+	rdd = edges.mapPartitions(lambda x: foo(x))				#REDUCE	
 
 	#ROUND 2
 	#Sum up all elements in triangles
-	t = rdd.reduce(lambda x,y: x+y)							#REDUCE
+	t_final = rdd.reduce(lambda x,y: x+y)							#REDUCE
 	
 	#t = 0
 	#for e in rdd.collect():
 	#	print("EEEEEEEEEE:", e)
 	#	t = t + e
-
-	t_final = C**2 * t
 
 	return t_final
 
@@ -136,9 +132,10 @@ def main():
 	# 3. Read input file: in this case it'll be a .txt file
 	data_path = sys.argv[3]
 	assert os.path.isfile(data_path), "File or folder not found"
-	rawData = sc.textFile(data_path).cache() 	#RDD of Strings
+	rawData = sc.textFile(data_path) 	#RDD of Strings
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
-	
+	edges = edges.repartition(C)
+
 	#Printing number of edges
 	print("\nEDGES:", edges.count())	
 
@@ -167,7 +164,7 @@ def main():
 	#ALGORITHM 2 RUN
 	print("\nMR_ApproxTCwithSparkPartitions:")
 	start = time.time() * 1000		#Starting time in milliseconds
-	result_alg2 = MR_ApproxTCwithSparkPartitions(edges, C)
+	result_alg2 = C**2 * MR_ApproxTCwithSparkPartitions(edges)
 	stop = time.time() * 1000		#Stopping time in milliseconds
 	runningTime_alg2 = stop - start
 	
