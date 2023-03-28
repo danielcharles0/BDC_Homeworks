@@ -99,12 +99,7 @@ def MR_ApproxTCwithSparkPartitions(edges):
 
 	#ROUND 2
 	#Sum up all elements in triangles
-	t_final = rdd.reduce(lambda x,y: x+y)							#REDUCE
-	
-	#t = 0
-	#for e in rdd.collect():
-	#	print("EEEEEEEEEE:", e)
-	#	t = t + e
+	t_final = rdd.reduce(lambda x,y: x+y)					#REDUCE
 
 	return t_final
 
@@ -124,7 +119,7 @@ def main():
 	assert C.isdigit(), "C must be an integer - C is the number of colours"
 	C = int(C)
 
-	# 2. Read number of runs (ONE RUN = Round1 + Round2)
+	# 2. Read number of runs
 	R = sys.argv[2]
 	assert R.isdigit(), "R must be an integer - R is the number of runs"
 	R = int(R)
