@@ -155,7 +155,6 @@ def main():
 	#print("\n\tMEDIAN:", median_alg1)
 	#print("\n\tMEAN RUNNING TIME (ms):", sum(runningTime_alg1)/R)
 
-
 	#ALGORITHM 2 RUN
 	print("\nMR_ApproxTCwithSparkPartitions:")
 	start = time.time() * 1000										#Starting time in milliseconds
@@ -167,7 +166,7 @@ def main():
 	#print("\n\tRUNNING TIME (ms):", runningTime_alg2)
 
 	#Output File
-	text = "Dataset = " + str(sys.argv[3]) + "\n"
+	text = "Dataset = " + str(data_path) + "\n"
 	text += "Number of Edges = " + str(edges.count()) + "\n"
 	text += "Number of Colors = " + str(C) + "\n"
 	text += "Number of Repetitions = " + str(R) + "\n"
@@ -177,7 +176,6 @@ def main():
 	text += "Approximation through Spark partitions \n"
 	text += "- Number of triangles = " + str(result_alg2) + "\n"
 	text += "- Running time = " + str(runningTime_alg2) + " ms\n"
-
 
 	with open("output.txt", "w") as file:
 		file.write(text)
