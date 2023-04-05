@@ -131,11 +131,7 @@ def main():
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 	edges = edges.repartition(C)
 
-	#Printing number of edges
-	#print("\nEDGES:", edges.count())	
-
 	#ALGORITHM 1 RUNS
-	#print("\nMR_ApproxTCwithNodeColors:")
 	results_alg1 = [0] * R 											#Results stored to compute median
 	runningTime_alg1 = [0] * R 										#Running time for run i
 	for i in range(R):
@@ -143,17 +139,13 @@ def main():
 		results_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
 		stop = time.time() * 1000									#Stopping time in milliseconds
 		runningTime_alg1[i] = stop - start
-	#	print("\tRUN", i, "-> Estimate of t:", results_alg1[i])
 
-	#Printing the median of R runs
+	#Calculating the median of R runs
 	results_alg1.sort()
 	if(R%2==1):
 		median_alg1 = results_alg1[int(R/2)]
 	else:
-		median_alg1 = (results_alg1[int(R/2)] + results_alg1[int(R/2-1)])/2
-
-	#print("\n\tMEDIAN:", median_alg1)
-	#print("\n\tMEAN RUNNING TIME (ms):", sum(runningTime_alg1)/R)
+		median_alg1 = (results_alg1[R/2] + results_alg1[R/2-1])/2
 
 	#ALGORITHM 2 RUN
 	print("\nMR_ApproxTCwithSparkPartitions:")
@@ -161,9 +153,6 @@ def main():
 	result_alg2 = C**2 * MR_ApproxTCwithSparkPartitions(edges)
 	stop = time.time() * 1000										#Stopping time in milliseconds
 	runningTime_alg2 = stop - start
-	
-	#print("\tEstimate of t:", result_alg2)
-	#print("\n\tRUNNING TIME (ms):", runningTime_alg2)
 
 	#Output File
 	text = "Dataset = " + str(data_path) + "\n"
@@ -177,8 +166,7 @@ def main():
 	text += "- Number of triangles = " + str(result_alg2) + "\n"
 	text += "- Running time = " + str(runningTime_alg2) + " ms\n"
 
-	with open("output.txt", "w") as file:
-		file.write(text)
+	print(text)
 
 
 
