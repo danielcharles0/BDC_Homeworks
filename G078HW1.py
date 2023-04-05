@@ -145,7 +145,7 @@ def main():
 	if(R%2==1):
 		median_alg1 = results_alg1[int(R/2)]
 	else:
-		median_alg1 = (results_alg1[R/2] + results_alg1[R/2-1])/2
+		median_alg1 = (results_alg1[int(R/2)] + results_alg1[int(R/2-1)])/2
 
 	#ALGORITHM 2 RUN
 	print("\nMR_ApproxTCwithSparkPartitions:")
