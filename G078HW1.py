@@ -50,7 +50,7 @@ def MR_ApproxTCwithNodeColors(edges, C=1):
 	#input:
 	#		e - edge
 	#output:
-	#		(color,edge): color = -1 if non monochromatical edge
+	#		(color,edge): color = -1 if non monochromatic edge
 	def hash(e):
 		h1 = ((a * e[0] + b) % p) % C
 		h2 = ((a * e[1] + b) % p) % C
