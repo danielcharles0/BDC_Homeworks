@@ -166,16 +166,15 @@ def main():
 	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
 	edges = edges.repartition(32)
 
-	#Printing general info
-	print("\nOUTPUT with parameters:", )
-	print("\nDataset =", data_path)
-	print("\nNumber of Edges =", edges.count())	
-	print("\nNumber of Colors =", C)
-	print("\nNumber of Repetitions =", R)
+	#General info to be printed
+	text = "Dataset = " + str(data_path) + "\n"
+	text += "Number of Edges = " + str(edges.count()) + "\n"
+	text += "Number of Colors = " + str(C) + "\n"
+	text += "Number of Repetitions = " + str(R) + "\n"
 
 	if(F==0):
 		#ALGORITHM 1 RUNS
-		print("\nApproximation of algorithm with node coloring")
+		text += "Approximation of algorithm with node coloring\n"
 		results_alg1 = [0] * R 		#Results stored to compute median
 		runningTime_alg1 = [0] * R 		#Running time for run i
 		for i in range(R):
@@ -192,25 +191,26 @@ def main():
 		else:
 			median_alg1 = (results_alg1[R/2] + results_alg1[R/2-1])/2
 
-		print("\n- Number of triangles (median over", R, "runs =", median_alg1)
-		print("\n- Running time (average over", R, "runs) =", sum(runningTime_alg1)/R, "ms")
+		text += "- Number of triangles (median over " + R + " runs = " + median_alg1 + "\n"
+		text += "- Running time (average over " + R + " runs) = " + sum(runningTime_alg1)/R + " ms\n"
 	
 	elif(F==1):
 		#ALGORITHM 2 RUN
-		print("\nMR_ExactTC:")
-		results_alg1 = [0] * R 		#Results stored to compute median
-		runningTime_alg1 = [0] * R 		#Running time for run i
+		text += "Exact algorithm with node coloring\n"
+		#print("\nMR_ExactTC:")
+		results_alg2 = [0] * R 		#Results stored to compute median
+		runningTime_alg2 = [0] * R 		#Running time for run i
 		for i in range(R):
 			start = time.time() * 1000		#Starting time in milliseconds
 			results_alg2[i] = MR_ExactTC(edges, C)
 			stop = time.time() * 1000		#Stopping time in milliseconds
 			runningTime_alg2[i] = stop - start
-			print("\tRUN", i, "-> Estimate of t:", results_alg1[i])	#Should be all equal
+			#print("\tRUN", i, "-> Estimate of t:", results_alg1[i])	#Should be all equal
 		
-		print("\tEstimate of t:", result_alg2[R-1])
-		print("\n\tRUNNING TIME (ms):", runningTime_alg2)
+		text += "- Number of triangles = " + result_alg2[R-1] + "\n"
+		text += "- Running time (average over " + R + " runs) = " + sum(runningTime_alg2)/R + " ms\n"
 
-
+	print(text)
 
 if __name__ == "__main__":
 	main()
