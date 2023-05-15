@@ -124,14 +124,50 @@ def MR_ExactTC(edges, C):
 	a = random.randint(1, p-1)
 	b = random.randint(0, p-1)
 
+	#input:
+	#		e - edge
+	#output:
+	#		(color,edge): color = -1 if non monochromatical edge
+	def hash(e):
+		h_u = ((a * e[0] + b) % p) % C
+		h_v = ((a * e[1] + b) % p) % C
 
+		if(h_u <= h_v):
+			return [h_u, h_v]
+		else:
+			return [h_v, h_u]
 
+	#input:
+	#		e - edge
+	#		i - index, i=0,1,...,C-1
+	#output:
+	#		(key, edge): key generated from hash(edge) and i
+	def createTuple(e, i):
+		arr = hash(e)
 
+		if(i <= arr[0]):
+			k = i*100 + arr[0]*10 + arr[1]
+		elif(i <= arr[1]):
+			k = arr[0]*100 + i*10 + arr[1]
+		else:
+			k = arr[0]*100 + arr[1]*10 + i
 
+		return (k, (e[0], e[1]))
 
+	def foo(x):
+		
+		print(x[0], x[1])
 
+		return CountTriangles2(x[0], x[1], a, b, p, C)
 
+	#ROUND 1
+	rdd = (edges.map(lambda e: [createTuple(e, i) for i in range(C)])
+		.reduceByKey(lambda x: foo(x)))
 
+	#ROUND 2
+	t = rdd.reduce(sum)
+
+	return t
 
 
 
@@ -157,7 +193,7 @@ def main():
 	# 3. Read flag
 	F = sys.argv[3]
 	assert F.isdigit(), "F must be a single digit binary (0 or 1) - F is the flag that switches between algorithm 1 and algorithm 2"
-	F = bin(F)
+	F = int(F)
 
 	# 4. Read input file: in this case it'll be a .txt file
 	data_path = sys.argv[4]
@@ -175,6 +211,7 @@ def main():
 	if(F==0):
 		#ALGORITHM 1 RUNS
 		text += "Approximation of algorithm with node coloring\n"
+		#print("\nMR_ApproxTCwithNodeColors:")
 		results_alg1 = [0] * R 		#Results stored to compute median
 		runningTime_alg1 = [0] * R 		#Running time for run i
 		for i in range(R):
@@ -189,7 +226,7 @@ def main():
 		if(R%2==1):
 			median_alg1 = results_alg1[int(R/2)]
 		else:
-			median_alg1 = (results_alg1[R/2] + results_alg1[R/2-1])/2
+			median_alg1 = (results_alg1[int(R/2)] + results_alg1[int(R/2-1)])/2
 
 		text += "- Number of triangles (median over " + R + " runs = " + median_alg1 + "\n"
 		text += "- Running time (average over " + R + " runs) = " + sum(runningTime_alg1)/R + " ms\n"
