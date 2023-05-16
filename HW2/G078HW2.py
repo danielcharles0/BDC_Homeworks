@@ -36,7 +36,7 @@ def CountTriangles(edges):
 
 
 
-#Triangles counter
+#Triangles counter based on key
 def countTriangles2(colors_tuple, edges, rand_a, rand_b, p, num_colors):
     #We assume colors_tuple to be already sorted by increasing colors. Just transform in a list for simplicity
     colors = list(colors_tuple)  
@@ -146,28 +146,33 @@ def MR_ExactTC(edges, C):
 		arr = hash(e)
 
 		if(i <= arr[0]):
-			k = i*100 + arr[0]*10 + arr[1]
+			k = str(i) + str(arr[0]) + str(arr[1])
 		elif(i <= arr[1]):
-			k = arr[0]*100 + i*10 + arr[1]
+			k = str(arr[0]) + str(i) + str(arr[1])
 		else:
-			k = arr[0]*100 + arr[1]*10 + i
+			k = str(arr[0]) + str(arr[1]) + str(i)
 
-		return (k, (e[0], e[1]))
+		return (k, e)
 
-	def foo(x):
-		
-		print(x[0], x[1])
-
-		return CountTriangles2(x[0], x[1], a, b, p, C)
+	#print("#### 3 ####")
 
 	#ROUND 1
-	rdd = (edges.map(lambda e: [createTuple(e, i) for i in range(C)])
-		.reduceByKey(lambda x: foo(x)))
+	rdd = (edges.flatMap(lambda e: [createTuple(e, i) for i in range(C)])	#MAP 
+		.groupByKey()														#SHUFFLE
+		.map(lambda x: countTriangles2(x[0], x[1], a, b, p, C)))			#REDUCE
+
+	#print("#### 4 ####")
+
+	print("Elements in RDD:")
+	for elem in rdd.collect():
+		#print("Key: " + elem[0] + " Length: " + str(len(list(elem[1]))))	#Use this with .map(lambda x: x) to inspect data
+		print(elem)		#number of triangles for every key
 
 	#ROUND 2
-	t = rdd.reduce(sum)
+	t_final = rdd.reduce(lambda x,y: x+y)
 
-	return t
+	#print("#### 5 ####")
+	return t_final
 
 
 
@@ -208,6 +213,8 @@ def main():
 	text += "Number of Colors = " + str(C) + "\n"
 	text += "Number of Repetitions = " + str(R) + "\n"
 
+	#print("#### 1 ####")
+
 	if(F==0):
 		#ALGORITHM 1 RUNS
 		text += "Approximation of algorithm with node coloring\n"
@@ -228,10 +235,12 @@ def main():
 		else:
 			median_alg1 = (results_alg1[int(R/2)] + results_alg1[int(R/2-1)])/2
 
-		text += "- Number of triangles (median over " + R + " runs = " + median_alg1 + "\n"
-		text += "- Running time (average over " + R + " runs) = " + sum(runningTime_alg1)/R + " ms\n"
+		text += "- Number of triangles (median over " + str(R) + " runs = " + str(median_alg1) + "\n"
+		text += "- Running time (average over " + str(R) + " runs) = " + str(sum(runningTime_alg1)/R) + " ms\n"
 	
 	elif(F==1):
+		#print("#### 2 ####")
+
 		#ALGORITHM 2 RUN
 		text += "Exact algorithm with node coloring\n"
 		#print("\nMR_ExactTC:")
@@ -244,10 +253,10 @@ def main():
 			runningTime_alg2[i] = stop - start
 			#print("\tRUN", i, "-> Estimate of t:", results_alg1[i])	#Should be all equal
 		
-		text += "- Number of triangles = " + result_alg2[R-1] + "\n"
-		text += "- Running time (average over " + R + " runs) = " + sum(runningTime_alg2)/R + " ms\n"
+		text += "- Number of triangles = " + str(results_alg2[R-1]) + "\n"
+		text += "- Running time (average over " + str(R) + " runs) = " + str(sum(runningTime_alg2)/R) + " ms\n"
 
-	print(text)
+	print("\n" + text)
 
 if __name__ == "__main__":
 	main()
