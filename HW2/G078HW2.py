@@ -146,11 +146,11 @@ def MR_ExactTC(edges, C):
 		arr = hash(e)
 
 		if(i <= arr[0]):
-			k = str(i) + str(arr[0]) + str(arr[1])
+			k = (i, arr[0], arr[1])
 		elif(i <= arr[1]):
-			k = str(arr[0]) + str(i) + str(arr[1])
+			k = (arr[0], i, arr[1])
 		else:
-			k = str(arr[0]) + str(arr[1]) + str(i)
+			k = (arr[0], arr[1], i)
 
 		return (k, e)
 
@@ -160,10 +160,11 @@ def MR_ExactTC(edges, C):
 	rdd = (edges.flatMap(lambda e: [createTuple(e, i) for i in range(C)])	#MAP 
 		.groupByKey()														#SHUFFLE
 		.map(lambda x: countTriangles2(x[0], x[1], a, b, p, C)))			#REDUCE
+		#.map(lambda x: x))
 
 	#print("#### 4 ####")
 
-	print("Elements in RDD:")
+	print("\nElements in RDD:")
 	for elem in rdd.collect():
 		#print("Key: " + elem[0] + " Length: " + str(len(list(elem[1]))))	#Use this with .map(lambda x: x) to inspect data
 		print(elem)		#number of triangles for every key
