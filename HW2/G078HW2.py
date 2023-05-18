@@ -127,7 +127,7 @@ def MR_ExactTC(edges, C):
 	#input:
 	#		e - edge
 	#output:
-	#		(color,edge): color = -1 if non monochromatical edge
+	#		(hash_min, hash_max): hash_min is the min hash between the two generated from the nodes
 	def hash(e):
 		h_u = ((a * e[0] + b) % p) % C
 		h_v = ((a * e[1] + b) % p) % C
@@ -139,74 +139,59 @@ def MR_ExactTC(edges, C):
 
 	#input:
 	#		e - edge
-	#		i - index, i=0,1,...,C-1
 	#output:
-	#		(key, edge): key generated from hash(edge) and i
-	def createTuple(e, i):
+	#		tuples - array containing tuples (k_i, e) with i=0,...,C-1
+	def createTuples(e):
 		arr = hash(e)
+		tuples = [0] * C
 
-		if(i <= arr[0]):
-			k = (i, arr[0], arr[1])
-		elif(i <= arr[1]):
-			k = (arr[0], i, arr[1])
-		else:
-			k = (arr[0], arr[1], i)
+		for i in range(C):
+			if(i <= arr[0]):
+				k = (i, arr[0], arr[1])
+			elif(i <= arr[1]):
+				k = (arr[0], i, arr[1])
+			else:
+				k = (arr[0], arr[1], i)
 
-		return (k, e)
+			tuples[i] = (k, e)
 
-	#print("#### 3 ####")
+		return tuples
 
 	#ROUND 1
-	rdd = (edges.flatMap(lambda e: [createTuple(e, i) for i in range(C)])	#MAP 
-		.groupByKey()														#SHUFFLE
-		.map(lambda x: countTriangles2(x[0], x[1], a, b, p, C)))			#REDUCE
-		#.map(lambda x: x))
-
-	#print("#### 4 ####")
-
-	print("\nElements in RDD:")
-	for elem in rdd.collect():
-		#print("Key: " + elem[0] + " Length: " + str(len(list(elem[1]))))	#Use this with .map(lambda x: x) to inspect data
-		print(elem)		#number of triangles for every key
+	rdd = (edges.flatMap(createTuples)								#MAP 
+		.groupByKey()												#SHUFFLE
+		.map(lambda x: countTriangles2(x[0], x[1], a, b, p, C)))	#REDUCE
 
 	#ROUND 2
 	t_final = rdd.reduce(lambda x,y: x+y)
 
-	#print("#### 5 ####")
 	return t_final
 
 
 
 def main():
-	# CHECKING NUMBER OF CMD LINE PARAMETERS
-	assert len(sys.argv) == 5, "Usage: python G078HW2.py <C> <R> <F> <file_name>"
-
 	# SPARK SETUP
-	conf = SparkConf().setAppName('G078HW2').setMaster("local[*]")
+	conf = SparkConf().setAppName('G078HW2').setMaster("local[*]").set("spark.locality.wait", "0s")
 	sc = SparkContext(conf=conf)
 
 	# INPUT READING
 	# 1. Read number of colors
 	C = sys.argv[1]
-	assert C.isdigit(), "C must be an integer - C is the number of colours"
 	C = int(C)
 
 	# 2. Read number of runs
 	R = sys.argv[2]
-	assert R.isdigit(), "R must be an integer - R is the number of runs"
 	R = int(R)
 
 	# 3. Read flag
 	F = sys.argv[3]
-	assert F.isdigit(), "F must be a single digit binary (0 or 1) - F is the flag that switches between algorithm 1 and algorithm 2"
 	F = int(F)
 
 	# 4. Read input file: in this case it'll be a .txt file
 	data_path = sys.argv[4]
-	assert os.path.isfile(data_path), "File or folder not found"
 	rawData = sc.textFile(data_path) 	#RDD of Strings
-	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1]))).cache()		#RDD of integers
-	edges = edges.repartition(32)
+	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1])))		#RDD of integers
+	edges = edges.repartition(32).cache()
 
 	#General info to be printed
 	text = "Dataset = " + str(data_path) + "\n"
@@ -214,12 +199,9 @@ def main():
 	text += "Number of Colors = " + str(C) + "\n"
 	text += "Number of Repetitions = " + str(R) + "\n"
 
-	#print("#### 1 ####")
-
 	if(F==0):
 		#ALGORITHM 1 RUNS
 		text += "Approximation of algorithm with node coloring\n"
-		#print("\nMR_ApproxTCwithNodeColors:")
 		results_alg1 = [0] * R 		#Results stored to compute median
 		runningTime_alg1 = [0] * R 		#Running time for run i
 		for i in range(R):
@@ -227,7 +209,6 @@ def main():
 			results_alg1[i] = MR_ApproxTCwithNodeColors(edges, C)
 			stop = time.time() * 1000		#Stopping time in milliseconds
 			runningTime_alg1[i] = stop - start
-			#print("\tRUN", i, "-> Estimate of t:", results_alg1[i])
 
 		#Printing the median of R runs
 		results_alg1.sort()
@@ -240,11 +221,8 @@ def main():
 		text += "- Running time (average over " + str(R) + " runs) = " + str(sum(runningTime_alg1)/R) + " ms\n"
 	
 	elif(F==1):
-		#print("#### 2 ####")
-
 		#ALGORITHM 2 RUN
 		text += "Exact algorithm with node coloring\n"
-		#print("\nMR_ExactTC:")
 		results_alg2 = [0] * R 		#Results stored to compute median
 		runningTime_alg2 = [0] * R 		#Running time for run i
 		for i in range(R):
@@ -252,7 +230,6 @@ def main():
 			results_alg2[i] = MR_ExactTC(edges, C)
 			stop = time.time() * 1000		#Stopping time in milliseconds
 			runningTime_alg2[i] = stop - start
-			#print("\tRUN", i, "-> Estimate of t:", results_alg1[i])	#Should be all equal
 		
 		text += "- Number of triangles = " + str(results_alg2[R-1]) + "\n"
 		text += "- Running time (average over " + str(R) + " runs) = " + str(sum(runningTime_alg2)/R) + " ms\n"
