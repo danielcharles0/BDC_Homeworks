@@ -171,7 +171,7 @@ def MR_ExactTC(edges, C):
 
 def main():
 	# SPARK SETUP
-	conf = SparkConf().setAppName('G078HW2').setMaster("local[*]").set("spark.locality.wait", "0s")
+	conf = SparkConf().setAppName('G078HW2').set("spark.locality.wait", "0s")
 	sc = SparkContext(conf=conf)
 
 	# INPUT READING
@@ -190,8 +190,8 @@ def main():
 	# 4. Read input file: in this case it'll be a .txt file
 	data_path = sys.argv[4]
 	rawData = sc.textFile(data_path) 	#RDD of Strings
-	edges = rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1])))		#RDD of integers
-	edges = edges.repartition(32).cache()
+	edges = (rawData.map(lambda x: (int(x.split(",")[0]), int(x.split(",")[1])))		#RDD of integers
+		.repartition(32).cache())
 
 	#General info to be printed
 	text = "Dataset = " + str(data_path) + "\n"
@@ -210,7 +210,7 @@ def main():
 			stop = time.time() * 1000		#Stopping time in milliseconds
 			runningTime_alg1[i] = stop - start
 
-		#Printing the median of R runs
+		#Computing the median of R runs
 		results_alg1.sort()
 		if(R%2==1):
 			median_alg1 = results_alg1[int(R/2)]
@@ -221,9 +221,9 @@ def main():
 		text += "- Running time (average over " + str(R) + " runs) = " + str(sum(runningTime_alg1)/R) + " ms\n"
 	
 	elif(F==1):
-		#ALGORITHM 2 RUN
+		#ALGORITHM 2 RUNS
 		text += "Exact algorithm with node coloring\n"
-		results_alg2 = [0] * R 		#Results stored to compute median
+		results_alg2 = [0] * R 		
 		runningTime_alg2 = [0] * R 		#Running time for run i
 		for i in range(R):
 			start = time.time() * 1000		#Starting time in milliseconds
