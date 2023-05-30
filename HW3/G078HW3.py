@@ -4,25 +4,29 @@ from pyspark import StorageLevel
 import threading
 import sys
 import datetime
+from statistics import median
 
 # After how many items should we stop?
 THRESHOLD = 10000000
 
-#TODO
-#Count Sketch hash function h: U -> {1,2,...,W}
+
+
+#Count Sketch hash function h: U -> {0,1,...,W-1}
 def hash1(key, row):
-    h = (key * row) % W
+    #(row+1) to not have always hash = 0 in row 0
+    h = ((key * (row+1)) % W)
     return h
 
-#TODO
+
+
 #Count Sketch hash function g: U -> {-1, +1}
 def hash2(key, row):
-    g = (key * row) % W
-    if g >= W/2:
-        g = 1
+    g = (key * (row+1)) % W
+    
+    if (g % 2) == 1:
+        return 1
     else:
-        g = -1
-    return g
+        return -1
 
 
 
@@ -30,40 +34,35 @@ def hash2(key, row):
 def process_batch(time, batch):
     start = initialTime.second + 100 * initialTime.minute
     current = time.second + 100*time.minute
-    if (current - start) >= left and (current - start) <= right:
+
+    global streamLength, histogram, C
+    batch_size = batch.count()
+    streamLength[0] += batch_size
     
-        # We are working on the batch at time `time`.
-        global streamLength, histogram, C
-        batch_size = batch.count()
-        streamLength[0] += batch_size
-        
-        if batch_size != 0:
-            batch_items = (batch.map(lambda s: (int(s), 1))
-                .groupByKey()
-                .map(lambda x: (x[0], sum(x[1]))))
+    if (current - start) >= left and (current - start) <= right:
 
-            for t in batch_items.collect():
-                key = t[0]
+        batch_items = (batch.map(lambda s: (int(s), 1))
+            .groupByKey()
+            .map(lambda x: (x[0], sum(x[1]))))
 
-                #Exact computation
-                if t[0] not in histogram:
-                    histogram[key] = t[1]
-                else:
-                    histogram[key] += t[1]
+        for t in batch_items.collect():
+            key = t[0]
 
-                #Count Sketch
-                for i in range(D):
-                    C[i][hash1(key, i)] += hash2(key, i)
+            #Exact computation
+            if t[0] not in histogram:
+                histogram[key] = t[1]
+            else:
+                histogram[key] += t[1]
 
+            #Count Sketch
+            for i in range(D):
+                C[i][hash1(key, i)] += hash2(key, i)
 
+        print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed
+    else:           
+        print("Batch size at time [{0}] is: {1}".format(time, batch_size))
 
-            #print("Current frequency of 9999 =", histogram[9999])
-                    
-            # If we wanted, here we could run some additional code on the global histogram
-            if batch_size > 0:
-                print("Batch size at time [{0}] is: {1}".format(time, batch_size))
-
-    if streamLength[0] >= THRESHOLD or (current - start) > right:
+    if streamLength[0] >= THRESHOLD: #or (current - start) > right:
         stopping_condition.set()
         
 
@@ -112,9 +111,8 @@ if __name__ == '__main__':
     # DEFINING THE REQUIRED DATA STRUCTURES TO MAINTAIN THE STATE OF THE STREAM
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
-    streamLength = [0] # Stream length (an array to be passed by reference)
-    histogram = {} # Hash Table for the distinct elements
-    
+    streamLength = [0]  # Stream length (an array to be passed by reference)
+    histogram = {}  # Hash Table for the distinct elements
     C = [([0] * W) for i in range(D)]   #counters matrix for Count Sketch
 
     # CODE TO PROCESS AN UNBOUNDED STREAM OF DATA IN BATCHES
@@ -133,13 +131,10 @@ if __name__ == '__main__':
     print("\nStreaming engine STOPPED\n")
 
     # COMPUTE AND PRINT FINAL STATISTICS
-    print("Number of items processed =", streamLength[0])
-    print("Number of distinct items =", len(histogram))
     largest_item = max(histogram.keys())
-    print("Largest item =", largest_item)
-    print("Frequency of {0} = {1}".format(largest_item, histogram[largest_item]))
+    output = "Number of items received: {0}\n".format(streamLength[0])
 
-    #Exact F_2
+    #Exact F_1 and F_2
     F_1 = 0
     F_2 = 0
     for key in histogram.keys():
@@ -148,10 +143,30 @@ if __name__ == '__main__':
 
     F_2 = F_2/(F_1**2)
 
-    print("F_1:", F_1)
-    print("Exact F_2 (normalized):", F_2)
+    output += "Number of items processed: {0}\n".format(F_1)
+    output += "Number of distinct items: {0}\n".format(len(histogram))
+    output += "Largest item: {0}\n".format(largest_item)
+    output += "Exact F_2 (normalized): {0}\n".format(F_2)
 
     #Approximate F_2
+    F_2_tilde = [0] * D
+    for j in range(D):
+        for k in range(W):
+            F_2_tilde[j] += (C[j][k])**2
+        F_2_tilde[j] = F_2_tilde[j]/(F_1**2)        #Not sure about this normalization but F_2 of Count Sketch is the median 
+                                                    #of the estimates, so this is the only place to compute normalization 
 
+    F_2_CS = median(F_2_tilde)
+
+    output += "Approximated F_2 (normalized): {0}\n".format(F_2_CS)
+
+    #Average relative error of frequency estimates
+    avg_err = 0
+
+    #ADD CODE HERE
+
+    output += "Average relative error of frequency estimates: {0}\n".format(avg_err)
+
+    print(output)
 
 
