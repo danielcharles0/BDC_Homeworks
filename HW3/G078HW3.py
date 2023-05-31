@@ -31,6 +31,31 @@ def hash2(key, row):
 
 
 
+def findTopKItems(hist, k):
+    topK = [0] * k      #list with top-K items with highest value
+    for i in range(k):
+        items = hist.items()    #list with tuples in hist
+        max_val = 0     #current maximum value
+        max_key = 0     #key associated to current max
+        
+        for elem in items:
+            #if equal values take the one with greater key
+            if elem[1] == max_val:
+                if elem[0] > max_key:
+                    max_key = elem[0]
+
+            #if current elem analyzed has value greater than max_val, update max_val and max_key
+            if elem[1] > max_val:
+                max_key = elem[0]
+                max_val = elem[1]
+
+        topK[i] = (max_key, max_val)
+        hist.pop(max_key)
+
+    return topK
+
+
+
 # Operations to perform after receiving an RDD 'batch' at time 'time'
 def process_batch(time, batch):
     start = initialTime.second + 60 * initialTime.minute
@@ -133,6 +158,8 @@ if __name__ == '__main__':
     print("\nStreaming engine STOPPED\n")
 
     # COMPUTE AND PRINT FINAL STATISTICS
+    if(len(histogram) == 0):
+        raise Exception("Empty substream, interval [1,1] more likely to have first batch empty and then raise this error")
     largest_item = max(histogram.keys())
     output = "Number of items received: {0}\n".format(streamLength[0])
 
@@ -165,12 +192,8 @@ if __name__ == '__main__':
     #Average relative error of frequency estimates
     avg_err = 0
 
-    #find the K's fu components
-    kLargest_fu = [0]*K
-    for i in range(K):
-        max_key = max(histogram.keys())
-        kLargest_fu[i] = (max_key, histogram.get(max_key))
-        histogram.pop(max_key)
+    #find the top-K's fu components
+    kLargest_fu = findTopKItems(histogram, K)
 
     #find the K's fu_tilde components
     kLargest_fu_tilde = [0]*K
@@ -191,6 +214,6 @@ if __name__ == '__main__':
     if K<=20:
         output += "\nTop K frequent elements:\n"
         for i in range(K):
-            output += "Element: {0} => true frequency: {1} / extimated frequency: {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
+            output += "Element: {0} => true frequency: {1} / estimated frequency: {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
 
     print(output)
