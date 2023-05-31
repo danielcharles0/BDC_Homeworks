@@ -8,7 +8,7 @@ import datetime
 from statistics import median
 
 # After how many items should we stop?
-THRESHOLD = 10000000
+THRESHOLD = 100000000
 
 
 
@@ -32,14 +32,15 @@ def hash2(key, row):
 
 # Operations to perform after receiving an RDD 'batch' at time 'time'
 def process_batch(time, batch):
-    start = initialTime.second + 100 * initialTime.minute
-    current = time.second + 100*time.minute
+    start = initialTime.second + 60 * initialTime.minute
+    current = time.second + 60 * time.minute
+    offset = current - start
 
     global streamLength, histogram, C
     batch_size = batch.count()
     streamLength[0] += batch_size
 
-    if (current - start) >= left and (current - start) <= right:
+    if offset >= left and offset <= right:
 
         batch_items = (batch.map(lambda s: (int(s), 1))
             .groupByKey()
@@ -58,13 +59,11 @@ def process_batch(time, batch):
             for i in range(D):
                 C[i][hash1(key, i)] += hash2(key, i)
 
-        print(str(start) + "   E   " + str(current))
-
         print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed
     else:           
         print("Batch size at time [{0}] is: {1}".format(time, batch_size))
 
-    if streamLength[0] >= THRESHOLD: #or (current - start) > right:
+    if streamLength[0] >= THRESHOLD:
         stopping_condition.set()
         
 
@@ -106,7 +105,7 @@ if __name__ == '__main__':
     print("Top frequent items of interest:", K)
 
     portExp = int(sys.argv[6])
-    print("Receiving data from port:", portExp)
+    print("Receiving data from algo.dei.unipd.it:" + str(portExp))
     
     
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -137,8 +136,8 @@ if __name__ == '__main__':
     output = "Number of items received: {0}\n".format(streamLength[0])
 
     #Exact F_1 and F_2
-    F_1 = 0  #|SIGMA_R|
-    F_2 = 0  #SECOND MOMENT
+    F_1 = 0     #|SIGMA_R|
+    F_2 = 0     #SECOND MOMENT
     for key in histogram.keys():
         F_1 += histogram[key]
         F_2 += histogram[key]**2
@@ -172,18 +171,18 @@ if __name__ == '__main__':
         kLargest_fu[i] = (max_key, histogram.get(max_key))
         histogram.pop(max_key)
 
-    #find the K's fu_tilda components
-    kLargest_fu_tilda = [0]*K
+    #find the K's fu_tilde components
+    kLargest_fu_tilde = [0]*K
     for i in range(K):
         element_u = kLargest_fu[i][0]
         for_medians = [0] * D
         for j in range(D):
-            for_medians[i] = C[j][hash1(element_u,j)]
-        kLargest_fu_tilda[i] = median(for_medians)
+            for_medians[j] = C[j][hash1(element_u,j)] * hash2(element_u, j)
+        kLargest_fu_tilde[i] = median(for_medians)
 
     #computing avg error by summing all |fu - fu_tilde| / fu components
     for i in range(K):
-        avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilda[i]))/kLargest_fu[i][1]
+        avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilde[i]))/kLargest_fu[i][1]
 
 
     output += "Average relative error of frequency estimates: {0}\n".format(avg_err)
