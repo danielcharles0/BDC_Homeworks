@@ -8,7 +8,7 @@ import datetime
 from statistics import median
 
 # After how many items should we stop?
-THRESHOLD = 100000000
+THRESHOLD = 10000000
 
 
 
@@ -28,6 +28,7 @@ def hash2(key, row):
         return 1
     else:
         return -1
+
 
 
 # Operations to perform after receiving an RDD 'batch' at time 'time'
