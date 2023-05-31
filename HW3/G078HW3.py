@@ -188,4 +188,9 @@ if __name__ == '__main__':
 
     output += "Average relative error of frequency estimates: {0}\n".format(avg_err)
 
+    if K<=20:
+        output += "\nTop K frequent elements:\n"
+        for i in range(K):
+            output += "Element: {0} => true frequency: {1} / extimated frequency: {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
+
     print(output)
