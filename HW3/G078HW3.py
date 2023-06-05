@@ -4,7 +4,6 @@ from pyspark.streaming import StreamingContext
 from pyspark import StorageLevel
 import threading
 import sys
-import datetime
 from statistics import median
 
 # After how many items should we stop?
@@ -58,35 +57,39 @@ def findTopKItems(hist, k):
 
 # Operations to perform after receiving an RDD 'batch' at time 'time'
 def process_batch(time, batch):
-    start = initialTime.second + 60 * initialTime.minute
-    current = time.second + 60 * time.minute
-    offset = current - start
 
     global streamLength, histogram, C
     batch_size = batch.count()
+
+    if streamLength[0]>=THRESHOLD:
+        return
     streamLength[0] += batch_size
 
-    if offset >= left and offset <= right:
+    flag = False
 
-        batch_items = (batch.map(lambda s: (int(s), 1))
-            .groupByKey()
-            .map(lambda x: (x[0], sum(x[1]))))
+    batch_items = (batch.filter(lambda x: int(x) in range(left, right+1))
+        .map(lambda s: (int(s), 1))
+        .groupByKey()
+        .map(lambda x: (x[0], sum(x[1]))))
 
-        for t in batch_items.collect():
-            key = t[0]
+    for t in batch_items.collect():
+        flag = True     #at least one element processed
 
-            #Exact computation
-            if t[0] not in histogram:
-                histogram[key] = t[1]
-            else:
-                histogram[key] += t[1]
+        key = t[0]
 
-            #Count Sketch
-            for i in range(D):
-                C[i][hash1(key, i)] += hash2(key, i)
+        #Exact computation
+        if t[0] not in histogram:
+            histogram[key] = t[1]
+        else:
+            histogram[key] += t[1]
 
-        print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed
-    else:           
+        #Count Sketch
+        for i in range(D):
+            C[i][hash1(key, i)] += hash2(key, i)
+
+    if flag:
+        print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed         
+    else:
         print("Batch size at time [{0}] is: {1}".format(time, batch_size))
 
     if streamLength[0] >= THRESHOLD:
@@ -128,6 +131,7 @@ if __name__ == '__main__':
     print("Interval of interest: [{0},{1}]".format(left, right))
 
     K = int(sys.argv[5])
+    assert K <= (right-left+1), "K cannot be greater than the number of distinct elements we have."
     print("Top frequent items of interest:", K)
 
     portExp = int(sys.argv[6])
@@ -145,7 +149,6 @@ if __name__ == '__main__':
     # CODE TO PROCESS AN UNBOUNDED STREAM OF DATA IN BATCHES
     stream = ssc.socketTextStream("algo.dei.unipd.it", portExp, StorageLevel.MEMORY_AND_DISK)
     
-    initialTime = datetime.datetime.now()
     stream.foreachRDD(lambda time, batch: process_batch(time, batch))
     
     # MANAGING STREAMING SPARK CONTEXT
@@ -158,8 +161,6 @@ if __name__ == '__main__':
     print("\nStreaming engine STOPPED\n")
 
     # COMPUTE AND PRINT FINAL STATISTICS
-    if(len(histogram) == 0):
-        raise Exception("Empty substream, interval [1,1] more likely to have first batch empty and then raise this error")
     largest_item = max(histogram.keys())
     output = "Number of items received: {0}\n".format(streamLength[0])
 
