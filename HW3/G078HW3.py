@@ -6,6 +6,8 @@ import threading
 import sys
 from statistics import median
 
+import random
+
 # After how many items should we stop?
 THRESHOLD = 10000000
 
@@ -14,7 +16,8 @@ THRESHOLD = 10000000
 #Count Sketch hash function h: U -> {0,1,...,W-1}
 def hash1(key, row):
     #(row+1) to not have always hash = 0 in row 0
-    h = ((key * (row+1)) % W)
+    h = (key * (row+1)) % W
+
     return h
 
 
@@ -22,7 +25,7 @@ def hash1(key, row):
 #Count Sketch hash function g: U -> {-1, +1}
 def hash2(key, row):
     g = (key * (row+1)) % W
-    
+
     if (g % 2) == 1:
         return 1
     else:
@@ -78,14 +81,15 @@ def process_batch(time, batch):
         key = t[0]
 
         #Exact computation
-        if t[0] not in histogram:
+        if key not in histogram:
             histogram[key] = t[1]
         else:
             histogram[key] += t[1]
 
         #Count Sketch
-        for i in range(D):
-            C[i][hash1(key, i)] += hash2(key, i)
+        for l in range(t[1]):       #for every time that item key appears in the stream    
+            for i in range(D):      #for every row
+                C[i][hash1(key, i)] += hash2(key, i)
 
     if flag:
         print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed         
@@ -144,7 +148,8 @@ if __name__ == '__main__':
 
     streamLength = [0]  # Stream length (an array to be passed by reference)
     histogram = {}  # Hash Table for the distinct elements
-    C = [([0] * W) for i in range(D)]   #counters matrix for Count Sketch
+    C = [([0] * W) for i in range(D)]   #counters matrix for Count 
+
 
     # CODE TO PROCESS AN UNBOUNDED STREAM OF DATA IN BATCHES
     stream = ssc.socketTextStream("algo.dei.unipd.it", portExp, StorageLevel.MEMORY_AND_DISK)
@@ -182,13 +187,11 @@ if __name__ == '__main__':
     F_2_tilde = [0] * D
     for j in range(D):
         for k in range(W):
-            F_2_tilde[j] += (C[j][k])**2
-        F_2_tilde[j] = F_2_tilde[j]/(F_1**2)        #Not sure about this normalization but F_2 of Count Sketch is the median 
-                                                    #of the estimates, so this is the only place to compute normalization 
-    F_2_CS = median(F_2_tilde)
+            F_2_tilde[j] += ((C[j][k])**2)        
+    
+    F_2_CS = median(F_2_tilde)/(F_1**2)
 
     output += "Approximated F_2 (normalized): {0}\n".format(F_2_CS)
-
 
     #Average relative error of frequency estimates
     avg_err = 0
@@ -209,7 +212,6 @@ if __name__ == '__main__':
     for i in range(K):
         avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilde[i]))/kLargest_fu[i][1]
 
-
     output += "Average relative error of frequency estimates: {0}\n".format(avg_err)
 
     if K<=20:
@@ -218,3 +220,5 @@ if __name__ == '__main__':
             output += "Element: {0} => true frequency: {1} / estimated frequency: {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
 
     print(output)
+
+
