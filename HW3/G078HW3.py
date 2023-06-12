@@ -68,7 +68,6 @@ def process_batch(time, batch):
         .map(lambda x: (x[0], sum(x[1]))))
 
     for t in batch_items.collect():
-        flag = True     #at least one element processed
 
         key = t[0]
 
@@ -82,11 +81,6 @@ def process_batch(time, batch):
         for l in range(t[1]):       #for every time that item key appears in the stream    
             for i in range(D):      #for every row
                 C[i][hash1(key, i)] += hash2(key, i)
-
-    #if flag:
-       # print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed         
-    #else:
-       # print("Batch size at time [{0}] is: {1}".format(time, batch_size))
 
     if streamLength[0] >= THRESHOLD:
         stopping_condition.set()
@@ -123,14 +117,11 @@ if __name__ == '__main__':
 
     K = int(sys.argv[5])
     assert K <= (right-left+1), "K cannot be greater than the number of distinct elements we have."
-    #print("Top frequent items of interest:", K)
 
     portExp = int(sys.argv[6])
-    #print("Receiving data from algo.dei.unipd.it:" + str(portExp))
     
     output = "D = {0} W = {1} [left,right] = [{2},{3}] K = {4} Port = {5}\n". format(D,W,left,right,K,portExp)
 
-    
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # DEFINING THE REQUIRED DATA STRUCTURES TO MAINTAIN THE STATE OF THE STREAM
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -138,7 +129,6 @@ if __name__ == '__main__':
     streamLength = [0]  # Stream length (an array to be passed by reference)
     histogram = {}  # Hash Table for the distinct elements
     C = [([0] * W) for i in range(D)]   #counters matrix for Count 
-
 
     # CODE TO PROCESS AN UNBOUNDED STREAM OF DATA IN BATCHES
     stream = ssc.socketTextStream("algo.dei.unipd.it", portExp, StorageLevel.MEMORY_AND_DISK)
@@ -156,7 +146,6 @@ if __name__ == '__main__':
 
     # COMPUTE AND PRINT FINAL STATISTICS
     largest_item = max(histogram.keys())
-    #output = "Number of items received: {0}\n".format(streamLength[0])
 
     #Exact F_1 and F_2
     F_1 = 0     #|SIGMA_R|
@@ -172,11 +161,6 @@ if __name__ == '__main__':
     output += "Total number of items in [{0},{1}] = {2}\n".format(left,right,F_1)
 
     output += "Number of distinct items in [{0},{1}] = {2}\n".format(left,right,right-left+1)
-
-    #output += "Number of items processed: {0}\n".format(F_1)
-    #output += "Number of distinct items: {0}\n".format(len(histogram))
-    #output += "Largest item: {0}\n".format(largest_item)
-    #output += "Exact F_2 (normalized): {0}\n".format(F_2)
 
     #Approximate F_2
     F_2_tilde = [0] * D
@@ -206,7 +190,6 @@ if __name__ == '__main__':
         avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilde[i]))/kLargest_fu[i][1]
 
     if K<=20:
-        #output += "\nTop K frequent elements:\n"
         for i in range(K):
             output += "Item {0} Freq = {1} Est. Freq = {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
 
