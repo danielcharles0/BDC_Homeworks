@@ -193,7 +193,7 @@ if __name__ == '__main__':
         for i in range(K):
             output += "Item {0} Freq = {1} Est. Freq = {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
 
-    output += "Avg err for top 10 = {0}\n".format(avg_err)
+    output += "Avg err for top {0} = {1}\n".format(K,avg_err)
     output += "F2 {0} F2 Estimate {1}\n".format(F_2,F_2_CS)
     
     print(output)
