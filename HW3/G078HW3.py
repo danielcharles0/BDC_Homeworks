@@ -11,16 +11,12 @@ import random
 # After how many items should we stop?
 THRESHOLD = 10000000
 
-
-
 #Count Sketch hash function h: U -> {0,1,...,W-1}
 def hash1(key, row):
     #(row+1) to not have always hash = 0 in row 0
     h = (key * (row+1)) % W
 
     return h
-
-
 
 #Count Sketch hash function g: U -> {-1, +1}
 def hash2(key, row):
@@ -30,8 +26,6 @@ def hash2(key, row):
         return 1
     else:
         return -1
-
-
 
 def findTopKItems(hist, k):
     topK = [0] * k      #list with top-K items with highest value
@@ -55,8 +49,6 @@ def findTopKItems(hist, k):
         hist.pop(max_key)
 
     return topK
-
-
 
 # Operations to perform after receiving an RDD 'batch' at time 'time'
 def process_batch(time, batch):
@@ -91,16 +83,14 @@ def process_batch(time, batch):
             for i in range(D):      #for every row
                 C[i][hash1(key, i)] += hash2(key, i)
 
-    if flag:
-        print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed         
-    else:
-        print("Batch size at time [{0}] is: {1}".format(time, batch_size))
+    #if flag:
+       # print("P -> Batch size at time [{0}] is: {1}".format(time, batch_size))     #P stands for processed         
+    #else:
+       # print("Batch size at time [{0}] is: {1}".format(time, batch_size))
 
     if streamLength[0] >= THRESHOLD:
         stopping_condition.set()
         
-
-
 #input:
 #   (integer) 𝐷: the number of rows of the count sketch
 #   (integer) 𝑊: the number of columns of the count sketch
@@ -109,6 +99,7 @@ def process_batch(time, batch):
 #   (integer) 𝐾: the number of top frequent items of interest
 #   (integer) portExp: the port number
 if __name__ == '__main__':
+
     assert len(sys.argv) == 7, "USAGE: D W left right K portExp"
     conf = SparkConf().setMaster("local[*]").setAppName("G078HW3")
     #conf = conf.set("spark.executor.memory", "4g").set("spark.driver.memory", "4g")    #only if out of memory error
@@ -123,24 +114,22 @@ if __name__ == '__main__':
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # INPUT READING
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    
-    print("\nINFO:")
-
+   
     D = int(sys.argv[1])
     W = int(sys.argv[2])
-    print("Count Sketch: {0}x{1}".format(D, W))
 
     left = int(sys.argv[3])
     right = int(sys.argv[4])
-    print("Interval of interest: [{0},{1}]".format(left, right))
 
     K = int(sys.argv[5])
     assert K <= (right-left+1), "K cannot be greater than the number of distinct elements we have."
-    print("Top frequent items of interest:", K)
+    #print("Top frequent items of interest:", K)
 
     portExp = int(sys.argv[6])
-    print("Receiving data from algo.dei.unipd.it:" + str(portExp))
+    #print("Receiving data from algo.dei.unipd.it:" + str(portExp))
     
+    output = "D = {0} W = {1} [left,right] = [{2},{3}] K = {4} Port = {5}\n". format(D,W,left,right,K,portExp)
+
     
     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     # DEFINING THE REQUIRED DATA STRUCTURES TO MAINTAIN THE STATE OF THE STREAM
@@ -167,7 +156,7 @@ if __name__ == '__main__':
 
     # COMPUTE AND PRINT FINAL STATISTICS
     largest_item = max(histogram.keys())
-    output = "Number of items received: {0}\n".format(streamLength[0])
+    #output = "Number of items received: {0}\n".format(streamLength[0])
 
     #Exact F_1 and F_2
     F_1 = 0     #|SIGMA_R|
@@ -178,10 +167,16 @@ if __name__ == '__main__':
 
     F_2 = F_2/(F_1**2)
 
-    output += "Number of items processed: {0}\n".format(F_1)
-    output += "Number of distinct items: {0}\n".format(len(histogram))
-    output += "Largest item: {0}\n".format(largest_item)
-    output += "Exact F_2 (normalized): {0}\n".format(F_2)
+    output += "Total number of items = {0} \n".format(streamLength[0])
+
+    output += "Total number of items in [{0},{1}] = {2}\n".format(left,right,F_1)
+
+    output += "Number of distinct items in [{0},{1}] = {2}\n".format(left,right,right-left+1)
+
+    #output += "Number of items processed: {0}\n".format(F_1)
+    #output += "Number of distinct items: {0}\n".format(len(histogram))
+    #output += "Largest item: {0}\n".format(largest_item)
+    #output += "Exact F_2 (normalized): {0}\n".format(F_2)
 
     #Approximate F_2
     F_2_tilde = [0] * D
@@ -190,8 +185,6 @@ if __name__ == '__main__':
             F_2_tilde[j] += ((C[j][k])**2)        
     
     F_2_CS = median(F_2_tilde)/(F_1**2)
-
-    output += "Approximated F_2 (normalized): {0}\n".format(F_2_CS)
 
     #Average relative error of frequency estimates
     avg_err = 0
@@ -212,13 +205,12 @@ if __name__ == '__main__':
     for i in range(K):
         avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilde[i]))/kLargest_fu[i][1]
 
-    output += "Average relative error of frequency estimates: {0}\n".format(avg_err)
-
     if K<=20:
-        output += "\nTop K frequent elements:\n"
+        #output += "\nTop K frequent elements:\n"
         for i in range(K):
-            output += "Element: {0} => true frequency: {1} / estimated frequency: {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
+            output += "Item {0} Freq = {1} Est. Freq = {2}\n".format(kLargest_fu[i][0], kLargest_fu[i][1], kLargest_fu_tilde[i])
 
+    output += "Avg err for top 10 = {0}\n".format(avg_err)
+    output += "F2 {0} F2 Estimate {1}\n".format(F_2,F_2_CS)
+    
     print(output)
-
-
