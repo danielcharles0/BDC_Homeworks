@@ -60,8 +60,6 @@ def process_batch(time, batch):
         return
     streamLength[0] += batch_size
 
-    flag = False
-
     batch_items = (batch.filter(lambda x: int(x) in range(left, right+1))
         .map(lambda s: (int(s), 1))
         .groupByKey()
@@ -136,13 +134,13 @@ if __name__ == '__main__':
     stream.foreachRDD(lambda time, batch: process_batch(time, batch))
     
     # MANAGING STREAMING SPARK CONTEXT
-    print("\nSTARTING streaming engine\n")
+    #print("\nSTARTING streaming engine\n")
     ssc.start()
-    print("Waiting for shutdown condition")
+    #print("Waiting for shutdown condition")
     stopping_condition.wait()
-    print("\nSTOPPING the streaming engine\n")
+    #print("\nSTOPPING the streaming engine\n")
     ssc.stop(False, True)
-    print("\nStreaming engine STOPPED\n")
+    #print("\nStreaming engine STOPPED\n")
 
     # COMPUTE AND PRINT FINAL STATISTICS
     largest_item = max(histogram.keys())
@@ -160,7 +158,7 @@ if __name__ == '__main__':
 
     output += "Total number of items in [{0},{1}] = {2}\n".format(left,right,F_1)
 
-    output += "Number of distinct items in [{0},{1}] = {2}\n".format(left,right,right-left+1)
+    output += "Number of distinct items in [{0},{1}] = {2}\n".format(left,right,len(histogram))
 
     #Approximate F_2
     F_2_tilde = [0] * D
@@ -188,6 +186,7 @@ if __name__ == '__main__':
     #computing avg error by summing all |fu - fu_tilde| / fu components
     for i in range(K):
         avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilde[i]))/kLargest_fu[i][1]
+    avg_err = avg_err/K
 
     if K<=20:
         for i in range(K):
@@ -197,3 +196,4 @@ if __name__ == '__main__':
     output += "F2 {0} F2 Estimate {1}\n".format(F_2,F_2_CS)
     
     print(output)
+
