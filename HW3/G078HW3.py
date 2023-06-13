@@ -6,8 +6,6 @@ import threading
 import sys
 from statistics import median
 
-import random
-
 # After how many items should we stop?
 THRESHOLD = 10000000
 
@@ -134,13 +132,11 @@ if __name__ == '__main__':
     stream.foreachRDD(lambda time, batch: process_batch(time, batch))
     
     # MANAGING STREAMING SPARK CONTEXT
-    #print("\nSTARTING streaming engine\n")
     ssc.start()
-    #print("Waiting for shutdown condition")
+
     stopping_condition.wait()
-    #print("\nSTOPPING the streaming engine\n")
+
     ssc.stop(False, True)
-    #print("\nStreaming engine STOPPED\n")
 
     # COMPUTE AND PRINT FINAL STATISTICS
     largest_item = max(histogram.keys())
@@ -183,7 +179,7 @@ if __name__ == '__main__':
             for_medians[j] = C[j][hash1(element_u,j)] * hash2(element_u, j)
         kLargest_fu_tilde[i] = median(for_medians)
 
-    #computing avg error by summing all |fu - fu_tilde| / fu components
+    #computing avg error by summing all |fu - fu_tilde| / fu components and dividing them by K
     for i in range(K):
         avg_err += (abs(kLargest_fu[i][1]-kLargest_fu_tilde[i]))/kLargest_fu[i][1]
     avg_err = avg_err/K
